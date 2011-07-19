@@ -1,0 +1,4 @@
+biopy_isatab.egg-info
+build
+dist
+*.pyc
