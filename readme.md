@@ -7,14 +7,14 @@ formatted metadata. Usage is:
           rec = isatab.parse(isatab_metadata_directory)
 
 The returned record matches the general Investigation/Study/Assay
-structure of ISATab. The top level ISATabRecord` object
+structure of ISATab. The top level `ISATabRecord` object
 contains information about the investigation, along with study
 information as `ISATabStudyRecord` objects. Each record has assay
 information in `ISATabAssayRecord` sub-objects.
 
 The output is described in more detail in the parser module:
 
-https://github.com/ISA-tools/biopy-isatab/blob/master/bcbio/istab/parser.py
+https://github.com/ISA-tools/biopy-isatab/blob/master/bcbio/isatab/parser.py
 
 and the test directory contains example of use and information
 extraction:
