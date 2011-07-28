@@ -31,6 +31,7 @@ collapsing the data across the samples and raw data.
 from __future__ import with_statement
 
 import os
+import re
 import csv
 import glob
 import collections
@@ -219,17 +220,18 @@ class StudyAssayParser:
         """
         final = {}
         for key, val in node.metadata.iteritems():
-            val = list(val)
-            if isinstance(val[0], tuple):
-                val = [dict(v) for v in val]
-            final[key] = val
+            #val = list(val)
+            #if isinstance(val[0], tuple):
+            #    val = [dict(v) for v in val]
+            final[key] = list(val)
         node.metadata = final
         return node
 
     def _line_keyvals(self, line, header, hgroups, htypes, out):
-        out = self._line_by_type(line, header, hgroups, htypes, out, "attribute")
+        out = self._line_by_type(line, header, hgroups, htypes, out, "attribute",
+                                 self._collapse_attributes)
         out = self._line_by_type(line, header, hgroups, htypes, out, "processing",
-                                 self._extract_protocol_info)
+                                 self._collapse_attributes)
         out = self._line_by_type(line, header, hgroups, htypes, out, "node")
         return out
 
@@ -247,12 +249,17 @@ class StudyAssayParser:
             out[key].add(val)
         return out
 
-    def _extract_protocol_info(self, line, header, indexes):
-        out = dict()
+    def _collapse_attributes(self, line, header, indexes):
+        """Combine attributes in multiple columns into single named tuple.
+        """
+        names = []
+        vals = []
+        pat = re.compile("[\W]+")
         for i in indexes:
-            key = self._clean_header(header[i])
-            out[key] = line[i]
-        return tuple(out.items())
+            names.append(pat.sub("_", self._clean_header(header[i])))
+            vals.append(line[i])
+        Attrs = collections.namedtuple('Attrs', names)
+        return Attrs(*vals)
 
     def _clean_header(self, header):
         """Remove ISA-Tab specific information from Header[real name] headers.
