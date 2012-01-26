@@ -26,10 +26,10 @@ class IsatabTest(unittest.TestCase):
         assert len(study.assays) == 3
         assert study.assays[0].metadata["Study Assay File Name"] == "a_metabolome.txt"
         study = rec.studies[1]
-        assert study.nodes['NZ_0hrs_Grow_1'].metadata["organism"][0] == \
+        assert study.nodes['NZ_0hrs_Grow_1'].metadata["organism"][0].organism == \
                "Saccharomyces cerevisiae (Baker's yeast)"
         assert study.assays[0].nodes['E-MAXD-4-raw-data-426648783.txt'
-                                     ].metadata["ArrayExpress Accession"][0] == \
+                                     ].metadata["ArrayExpress Accession"][0][0] == \
                                      "E-MAXD-4"
 
     def test_minimal_parsing(self):
@@ -47,7 +47,7 @@ class IsatabTest(unittest.TestCase):
         study = rec.studies[0]
         assay_node = study.assays[0].nodes["AFFY#35C.CEL"]
         assert assay_node.metadata["Sample Name"] == [sname]
-        assert study.nodes[sname].metadata["strain"][0] == "C3H"
+        assert study.nodes[sname].metadata["strain"][0][0] == "C3H"
 
     def test_nextgen_parsing(self):
         """Parse ISA-Tab file representing next gen sequencing data
@@ -72,4 +72,4 @@ class IsatabTest(unittest.TestCase):
         expects = ["Mus musculus (Mouse)", "C57BL/6", "bone marrow"]
         attrs = ["Organism", "strain", "Organism Part"]
         for attr, expect in zip(attrs, expects):
-            assert study_node.metadata[attr][0] == expect
+            assert study_node.metadata[attr][0][0] == expect
