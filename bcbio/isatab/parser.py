@@ -35,6 +35,7 @@ import re
 import csv
 import glob
 import collections
+import pprint
 
 def parse(isatab_ref):
     """Entry point to parse an ISA-Tab directory.
@@ -295,6 +296,33 @@ class StudyAssayParser:
     def _swap_synonyms(self, header):
         return [self._synonyms.get(h, h) for h in header]
 
+_record_str = \
+"""* ISATab Record
+ metadata: {md}
+ studies:
+{studies}
+"""
+
+_study_str = \
+"""  * Study
+   metadata: {md}
+   nodes:
+{nodes}
+   assays:
+{assays}
+"""
+
+_assay_str = \
+"""    * Assay
+     metadata: {md}
+     nodes:
+{nodes}
+"""
+
+_node_str = \
+"""       * Node {name} {type}
+         metadata: {md}"""
+
 class ISATabRecord:
     """Represent ISA-Tab metadata in structured format.
 
@@ -314,6 +342,13 @@ class ISATabRecord:
         self.contacts = []
         self.studies = []
 
+    def __str__(self):
+        return _record_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 3),
+                                  ont=self.ontology_refs,
+                                  pub=self.publications,
+                                  contact=self.contacts,
+                                  studies="\n".join(str(x) for x in self.studies))
+
 class ISATabStudyRecord:
     """Represent a study within an ISA-Tab record.
     """
@@ -327,6 +362,11 @@ class ISATabStudyRecord:
         self.contacts = []
         self.nodes = {}
 
+    def __str__(self):
+        return _study_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 5),
+                                 assays="\n".join(str(x) for x in self.assays),
+                                 nodes="\n".join(str(x) for x in self.nodes.values()))
+
 class ISATabAssayRecord:
     """Represent an assay within an ISA-Tab record.
     """
@@ -335,6 +375,10 @@ class ISATabAssayRecord:
         self.metadata = metadata
         self.nodes = {}
 
+    def __str__(self):
+        return _assay_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 7),
+                                 nodes="\n".join(str(x) for x in self.nodes.values()))
+
 class NodeRecord:
     """Represent a data node within an ISA-Tab Study/Assay file.
     """
@@ -342,3 +386,8 @@ class NodeRecord:
         self.ntype = ntype
         self.name = name
         self.metadata = {}
+
+    def __str__(self):
+        return _node_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 9),
+                                name=self.name,
+                                type=self.ntype)
