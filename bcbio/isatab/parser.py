@@ -45,7 +45,8 @@ def parse(isatab_ref):
     investigation file.
     """
     if os.path.isdir(isatab_ref):
-        fnames = glob.glob(os.path.join(isatab_ref, "i_*.txt"))
+        fnames = glob.glob(os.path.join(isatab_ref, "i_*.txt")) + \
+                 glob.glob(os.path.join(isatab_ref, "*.idf.txt"))
         assert len(fnames) == 1
         isatab_ref = fnames[0]
     assert os.path.exists(isatab_ref), "Did not find investigation file: %s" % isatab_ref
@@ -86,6 +87,11 @@ class InvestigationParser:
                 rec.studies.append(study)
             else:
                 break
+        # handle SDRF files for MAGE compliant ISATab
+        if rec.metadata.has_key("SDRF File"):
+            study = ISATabStudyRecord()
+            study.metadata["Study File Name"] = rec.metadata["SDRF File"]
+            rec.studies.append(study)
         return rec
 
     def _parse_region(self, rec, line_iter):
@@ -176,14 +182,14 @@ class StudyAssayParser:
         final_studies = []
         for study in rec.studies:
             source_data = self._parse_study(study.metadata["Study File Name"],
-                                            "Sample Name")
+                                            ["Sample Name", "Comment[ENA_SAMPLE]"])
             if source_data:
                 study.nodes = source_data
                 final_assays = []
                 for assay in study.assays:
                     cur_assay = ISATabAssayRecord(assay)
                     assay_data = self._parse_study(assay["Study Assay File Name"],
-                                                   "Raw Data File")
+                                                   ["Raw Data File"])
                     cur_assay.nodes = assay_data
                     final_assays.append(cur_assay)
                 study.assays = final_assays
@@ -191,7 +197,7 @@ class StudyAssayParser:
         rec.studies = final_studies
         return rec
 
-    def _parse_study(self, fname, node_type):
+    def _parse_study(self, fname, node_types):
         """Parse study or assay row oriented file around the supplied base node.
         """
         if not os.path.exists(os.path.join(self._dir, fname)):
@@ -202,7 +208,14 @@ class StudyAssayParser:
             header = self._swap_synonyms(reader.next())
             hgroups = self._collapse_header(header)
             htypes = self._characterize_header(header, hgroups)
-            name_index = header.index(node_type)
+            for node_type in node_types:
+                try:
+                    name_index = header.index(node_type)
+                    break
+                except ValueError:
+                    name_index = None
+            assert name_index is not None, "Could not find standard header name: %s in %s" \
+                   % (node_types, header)
             for line in reader:
                 name = line[name_index]
                 try:

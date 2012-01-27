@@ -73,3 +73,14 @@ class IsatabTest(unittest.TestCase):
         attrs = ["Organism", "strain", "Organism Part"]
         for attr, expect in zip(attrs, expects):
             assert study_node.metadata[attr][0][0] == expect
+
+    def test_mage(self):
+        """Parse MAGE ISATab from ArrayExpress.
+        """
+        work_dir = os.path.join(self._dir, "mage")
+        rec = isatab.parse(work_dir)
+        assert len(rec.studies) == 1
+        study = rec.studies[0]
+        node = study.nodes["ERS025105"]
+        assert node.metadata["FASTQ_URI"][0].FASTQ_URI == \
+               "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR030/ERR030907/ERR030907.fastq.gz"

@@ -1,0 +1,29 @@
+Comment[ArrayExpressAccession]	E-MTAB-565
+Investigation Title	FOXK2 ChIP-seq																												
+Comment[Submitted Name]	FOXK2 ChIP-seq
+Experiment Description	Chromatin immunoprecipitation of FOXK2 (tagged with Flag and His tags) in U2OS cells detected by SOLiD sequencing																												
+Experimental Design	high_throughput_sequencing_design	binding_site_identification_design																											
+Comment[AEExperimentType]	ChIP-seq																												
+Experimental Factor Name	IMMUNOPRECIPITATE																												
+Experimental Factor Type	immunoprecipitate																												
+Quality Control Type	biological_replicate																												
+Public Release Date	2011-01-20																												
+Person Last Name	Donaldson																												
+Person First Name	Ian																												
+Person Mid Initials	J																												
+Person Email	ian.donaldson@manchester.ac.uk																												
+Person Phone																													
+Person Address	University of Manchester, Manchester, UK																												
+Person Affiliation	University of Manchester																												
+Person Roles	submitter																												
+PubMed ID																													
+Publication Author List																													
+Publication Title																													
+Publication Status																													
+Protocol Name	P-MTAB-19549	P-MTAB-19550	P-MTAB-19551	P-MTAB-19552	P-MTAB-19553
+Protocol Type	grow	specified_biomaterial_action	sequencing	DATA_GENERATION	alignment																								
+Protocol Description	U2OS cells, were grown in DMEM supplemented with 10% foetal bovine serum.	ChIP was performed as previously described (Marais et al., 2010) using ~8-10 x 10+7 U2OS-FOXK2-HF cells stably expressing FOXK2 tagged with Flag and His tags (~4Ã—150 mm plates) or stable U2OS-HF cells containing an empty vector encoding the same tags. Marais A, Ji Z, Child ES, Krause E, Mann DJ, Sharrocks AD. 2010. Cell cycle-dependent regulation of the Forkhead transcription factor FOXK2 by CDK-cyclin complexes. J Biol Chem. 285: 35728-35739. Anti-Flag (Sigma-Aldrich, F3165)	~10-20 ng of immunoprecipitated DNA from U2OS was sent for sequencing using the SOLiD platform according to the manufacturer's protocols.	SOLiD pipeline	The Corona-Lite software (ABI) was used to align reads against the hg18 reference genome. All 50bp were aligned allowing up and including 5 mismatches. Reads aligning to multiple locations were discarded.																								
+Protocol Hardware			AB SOLiD 4 System																										
+Comment[SecondaryAccession]	ERP000548																												
+Comment[SequenceDataURI]	http://www.ebi.ac.uk/ena/data/view/ERR030904-ERR030908																												
+SDRF File	E-MTAB-565.sdrf.txt
