@@ -84,3 +84,9 @@ class IsatabTest(unittest.TestCase):
         node = study.nodes["ERS025105"]
         assert node.metadata["FASTQ_URI"][0].FASTQ_URI == \
                "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR030/ERR030907/ERR030907.fastq.gz"
+
+    def test_repeated_header(self):
+        """Handle ISA-Tab inputs with repeated header names.
+        """
+        work_dir = os.path.join(self._dir, "BII-S-6")
+        rec = isatab.parse(work_dir)

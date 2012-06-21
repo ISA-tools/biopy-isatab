@@ -159,7 +159,7 @@ class StudyAssayParser:
     """
     def __init__(self, base_file):
         self._dir = os.path.dirname(base_file)
-        self._col_quals = ("Parameter Value", "Performer", "Date", "Unit",
+        self._col_quals = ("Performer", "Date", "Unit",
                            "Term Accession Number", "Term Source REF")
         self._col_types = {"attribute": ("Characteristics", "Factor Type",
                                          "Comment", "Label", "Material Type"),
@@ -168,7 +168,7 @@ class StudyAssayParser:
                            "node_assay" : ("Extract Name", "Labeled Extract Name",
                                            "Assay Name", "Data Transformat Name",
                                            "Normalization Name"),
-                           "processing": ("Protocol REF")}
+                           "processing": ("Protocol REF",)}
         self._synonyms = {"Array Data File" : "Raw Data File",
                           "Derived Array Data File" : "Derived Data File",
                           "Hybridization Assay Name": "Assay Name",
@@ -189,7 +189,7 @@ class StudyAssayParser:
                 for assay in study.assays:
                     cur_assay = ISATabAssayRecord(assay)
                     assay_data = self._parse_study(assay["Study Assay File Name"],
-                                                   ["Raw Data File"])
+                                                   ["Raw Data File", "Derived Data File"])
                     cur_assay.nodes = assay_data
                     final_assays.append(cur_assay)
                 study.assays = final_assays
