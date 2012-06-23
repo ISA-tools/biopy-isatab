@@ -281,6 +281,13 @@ class StudyAssayParser:
         """
         if header.find("[") >= 0:
             header = header.replace("]", "").split("[")[-1]
+        # ISATab can start with numbers but this is not supported in
+        # the python datastructure, so prefix with isa_ to make legal
+        try:
+            int(header[0])
+            header = "isa_" + header
+        except ValueError:
+            pass
         return header
 
     def _characterize_header(self, header, hgroups):
