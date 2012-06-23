@@ -166,7 +166,7 @@ class StudyAssayParser:
                            "node" : ("Sample Name", "Source Name", "Image File",
                                      "Raw Data File", "Derived Data File"),
                            "node_assay" : ("Extract Name", "Labeled Extract Name",
-                                           "Assay Name", "Data Transformat Name",
+                                           "Assay Name", "Data Transformation Name",
                                            "Normalization Name"),
                            "processing": ("Protocol REF",)}
         self._synonyms = {"Array Data File" : "Raw Data File",
@@ -189,7 +189,8 @@ class StudyAssayParser:
                 for assay in study.assays:
                     cur_assay = ISATabAssayRecord(assay)
                     assay_data = self._parse_study(assay["Study Assay File Name"],
-                                                   ["Raw Data File", "Derived Data File"])
+                                                   ["Raw Data File", "Derived Data File",
+                                                    "Image File"])
                     cur_assay.nodes = assay_data
                     final_assays.append(cur_assay)
                 study.assays = final_assays
