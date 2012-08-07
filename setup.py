@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name = "biopy-isatab",
-      version = "0.1",
+      version = "0.1.1",
       author = "Brad Chapman",
       author_email = "chapmanb@50mail.com",
       description = "Python parser for ISAtab, a biological file format for experimental metadata",

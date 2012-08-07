@@ -1,1 +1,1 @@
-recursive-include test/isatab/ *.txt
+recursive-include test/isatab *.txt
