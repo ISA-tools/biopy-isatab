@@ -45,3 +45,9 @@ More information about ISATab:
 - Twitter: [@isatools](http://twitter.com/isatools)
 - IRC: [irc://irc.freenode.net/#isatab](irc://irc.freenode.net/#isatab)
 - Development blog: <http://isatools.wordpress.com>
+
+#### License
+
+The code is freely available under the `MIT license`_.
+
+.. _MIT license: http://www.opensource.org/licenses/mit-license.html
