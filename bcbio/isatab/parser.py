@@ -1,30 +1,24 @@
 """Parse ISA-Tab structured metadata describing experimental data.
-
 Works with ISA-Tab (http://isatab.sourceforge.net), which provides a structured
 format for describing experimental metdata.
-
 The entry point for the module is the parse function, which takes an ISA-Tab
 directory (or investigator file) to parse. It returns a ISATabRecord object
 which contains details about the investigation. This is top level information
 like associated publications and contacts.
-
 This record contains a list of associated studies (ISATabStudyRecord objects).
 Each study contains a metadata attribute, which has the key/value pairs
 associated with the study in the investigation file. It also contains other
 high level data like publications, contacts, and details about the experimental
 design.
-
 The nodes attribute of each record captures the information from the Study file.
 This is a dictionary, where the keys are sample names and the values are
 NodeRecord objects. This collapses the study information on samples, and
 contains the associated information of each sample as key/value pairs in the
 metadata attribute.
-
 Finally, each study contains a list of assays, as ISATabAssayRecord objects.
 Similar to the study objects, these have a metadata attribute with key/value
 information about the assay. They also have a dictionary of nodes with data from
 the Assay file; in assays the keys are raw data files.
-
 This is a biased representation of the Study and Assay files which focuses on
 collapsing the data across the samples and raw data.
 """
@@ -39,7 +33,6 @@ import pprint
 
 def parse(isatab_ref):
     """Entry point to parse an ISA-Tab directory.
-
     isatab_ref can point to a directory of ISA-Tab data, in which case we
     search for the investigator file, or be a reference to the high level
     investigation file.
@@ -79,6 +72,7 @@ class InvestigationParser:
         # parse top level investigation details
         rec = ISATabRecord()
         rec, _ = self._parse_region(rec, line_iter)
+
         # parse study information
         while 1:
             study = ISATabStudyRecord()
@@ -99,6 +93,7 @@ class InvestigationParser:
         """
         had_info = False
         keyvals, section = self._parse_keyvals(line_iter)
+
         if keyvals:
             rec.metadata = keyvals[0]
         while section and section[0] != "STUDY":
@@ -110,6 +105,7 @@ class InvestigationParser:
                     keyvals = keyvals[0]
                 except IndexError:
                     keyvals = {}
+
             setattr(rec, attr_name, keyvals)
             section = next_section
         return rec, had_info
@@ -149,11 +145,9 @@ class InvestigationParser:
 
 class StudyAssayParser:
     """Parse row oriented metadata associated with study and assay samples.
-
     This currently does not attempt to be complete, but rather to extract the
     most useful information (in my biased opinion) and represent it simply
     in the record objects.
-
     This is coded generally, so can be expanded to more cases. It is biased
     towards microarray and next-gen sequencing data.
     """
@@ -327,6 +321,9 @@ _record_str = \
 _study_str = \
 """  * Study
    metadata: {md}
+   design_descriptors: {design_descriptors}
+   publications : {publications}
+   factors: {factors}
    nodes:
 {nodes}
    assays:
@@ -346,13 +343,11 @@ _node_str = \
 
 class ISATabRecord:
     """Represent ISA-Tab metadata in structured format.
-
     High level key/value data.
       - metadata -- dictionary
       - ontology_refs -- list of dictionaries
       - contacts -- list of dictionaries
       - publications -- list of dictionaries
-
     Sub-elements:
       - studies: List of ISATabStudyRecord objects.
     """
@@ -385,7 +380,11 @@ class ISATabStudyRecord:
 
     def __str__(self):
         return _study_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 5),
+                                 design_descriptors=pprint.pformat(self.design_descriptors).replace("\n", "\n" + " " * 5),
+                                 publications="\n".join(str(x) for x in self.publications),
+                                 factors="\n".join(str(x) for x in self.factors),
                                  assays="\n".join(str(x) for x in self.assays),
+                                 protocols="\n".join(str(x) for x in self.protocols),
                                  nodes="\n".join(str(x) for x in self.nodes.values()))
 
 class ISATabAssayRecord:
