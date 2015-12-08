@@ -2,7 +2,6 @@
 """
 import os
 import unittest
-
 from bcbio import isatab
 
 class IsatabTest(unittest.TestCase):
@@ -90,3 +89,6 @@ class IsatabTest(unittest.TestCase):
         """
         work_dir = os.path.join(self._dir, "BII-S-6")
         rec = isatab.parse(work_dir)
+
+    if __name__ == '__main__':
+        unittest.main()

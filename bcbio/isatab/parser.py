@@ -30,6 +30,23 @@ import csv
 import glob
 import collections
 import pprint
+import bisect
+
+
+def find_lt(a, x):
+    """Find rightmost value less than x"""
+    i = bisect.bisect_left(a, x)
+    if i:
+        return a[i-1]
+    raise ValueError
+
+
+def find_gt(a, x):
+    """Find leftmost value greater than x"""
+    i = bisect.bisect_right(a, x)
+    if i != len(a):
+        return a[i]
+    raise ValueError
 
 def parse(isatab_ref):
     """Entry point to parse an ISA-Tab directory.
@@ -49,6 +66,7 @@ def parse(isatab_ref):
     s_parser = StudyAssayParser(isatab_ref)
     rec = s_parser.parse(rec)
     return rec
+
 
 class InvestigationParser:
     """Parse top level investigation files into ISATabRecord objects.
@@ -82,7 +100,7 @@ class InvestigationParser:
             else:
                 break
         # handle SDRF files for MAGE compliant ISATab
-        if rec.metadata.has_key("SDRF File"):
+        if "SDRF File" in rec.metadata:
             study = ISATabStudyRecord()
             study.metadata["Study File Name"] = rec.metadata["SDRF File"]
             rec.studies.append(study)
@@ -143,6 +161,7 @@ class InvestigationParser:
                 line = None
         return out, line
 
+
 class StudyAssayParser:
     """Parse row oriented metadata associated with study and assay samples.
     This currently does not attempt to be complete, but rather to extract the
@@ -156,14 +175,15 @@ class StudyAssayParser:
         self._col_quals = ("Performer", "Date", "Unit",
                            "Term Accession Number", "Term Source REF")
         self._col_types = {"attribute": ("Characteristics", "Factor Type",
-                                         "Comment", "Label", "Material Type"),
+                                         "Comment", "Label", "Material Type", "Factor Value"),
                            "node" : ("Sample Name", "Source Name", "Image File",
-                                     "Raw Data File", "Derived Data File"),
+                                     "Raw Data File", "Derived Data File", "Acquisition Parameter Data File"),
                            "node_assay" : ("Extract Name", "Labeled Extract Name",
                                            "Assay Name", "Data Transformation Name",
                                            "Normalization Name"),
                            "processing": ("Protocol REF",)}
         self._synonyms = {"Array Data File" : "Raw Data File",
+                          "Free Induction Decay Data File": "Raw Data File",
                           "Derived Array Data File" : "Derived Data File",
                           "Hybridization Assay Name": "Assay Name",
                           "Derived Array Data Matrix File": "Derived Data File",
@@ -176,21 +196,86 @@ class StudyAssayParser:
         final_studies = []
         for study in rec.studies:
             source_data = self._parse_study(study.metadata["Study File Name"],
-                                            ["Sample Name", "Comment[ENA_SAMPLE]"])
+                                            ["Source Name", "Sample Name", "Comment[ENA_SAMPLE]"])
             if source_data:
                 study.nodes = source_data
                 final_assays = []
                 for assay in study.assays:
                     cur_assay = ISATabAssayRecord(assay)
                     assay_data = self._parse_study(assay["Study Assay File Name"],
-                                                   ["Raw Data File", "Derived Data File",
-                                                    "Image File"])
+                                                   ["Sample Name","Extract Name","Raw Data File","Derived Data File", "Image File", "Acquisition Parameter Data File", "Free Induction Decay Data File"])
                     cur_assay.nodes = assay_data
+                    self._get_process_nodes(assay["Study Assay File Name"], cur_assay)
                     final_assays.append(cur_assay)
                 study.assays = final_assays
+
+                #get process nodes
+                self._get_process_nodes(study.metadata["Study File Name"], study)
                 final_studies.append(study)
         rec.studies = final_studies
         return rec
+
+    def _get_process_nodes(self, fname, study):
+        if not os.path.exists(os.path.join(self._dir, fname)):
+            return None
+        process_nodes = {}
+
+        with open(os.path.join(self._dir, fname), "rU") as in_handle:
+            reader = csv.reader(in_handle, dialect="excel-tab")
+            headers = self._swap_synonyms(next(reader))
+            hgroups = self._collapse_header(headers)
+            htypes = self._characterize_header(headers, hgroups)
+            #
+            # print "headers:", headers
+            # print "hgroups:", hgroups
+            # print "htypes:", htypes
+
+            processing_indices = [i for i, x in enumerate(htypes) if x == "processing"]
+            node_indices = [i for i, x in enumerate(htypes) if x == "node" or x=="node_assay"]
+
+            # print "processing_indices ->", processing_indices
+            # print "node_indices -> ", node_indices
+            for processing_index in processing_indices:
+                try:
+                    input_index = find_lt(node_indices, processing_index)
+                    output_index = find_gt(node_indices, processing_index)
+
+                    # print "processing_index ", processing_index
+                    # print "input_index ", input_index
+                    # print "output_index ", output_index
+                    # print " "
+
+                except ValueError:
+                    # print "Invalid indices for process nodes"
+                    break
+                input_header = headers[hgroups[input_index][0]]
+                output_header = headers[hgroups[output_index][0]]
+                processing_header = headers[hgroups[processing_index][0]]
+                line_number = 0
+                max_number = 0
+                for line in reader:
+                    if line_number >=  max_number:
+                        input_name = line[hgroups[input_index][0]]
+                        input_node_index = self._build_node_index(input_header,input_name)
+                        #input_node = study.nodes[input_node_index]
+
+                        output_name = line[hgroups[output_index][0]]
+                        output_node_index = self._build_node_index(output_header, output_name)
+                        #output_node = study.nodes[output_node_index]
+
+                        processing_name = line[hgroups[processing_index][0]]
+                        process_node = ProcessNodeRecord(processing_name, processing_header, study)
+
+                        process_node.inputs.append(input_node_index)
+                        process_node.outputs.append(output_node_index)
+
+                        max_number = max(len(process_node.inputs), len(process_node.outputs))
+                        line_number += 1
+                        process_nodes[processing_name] = process_node
+                    else:
+                        line_number += 1
+                study.process_nodes = process_nodes
+
 
     def _parse_study(self, fname, node_types):
         """Parse study or assay row oriented file around the supplied base node.
@@ -200,35 +285,46 @@ class StudyAssayParser:
         nodes = {}
         with open(os.path.join(self._dir, fname), "rU") as in_handle:
             reader = csv.reader(in_handle, dialect="excel-tab")
-            header = self._swap_synonyms(reader.next())
+            header = self._swap_synonyms(next(reader))
             hgroups = self._collapse_header(header)
             htypes = self._characterize_header(header, hgroups)
+
             for node_type in node_types:
                 try:
                     name_index = header.index(node_type)
-                    break
                 except ValueError:
                     name_index = None
-            assert name_index is not None, "Could not find standard header name: %s in %s" \
-                   % (node_types, header)
-            for line in reader:
-                name = line[name_index]
-                try:
-                    node = nodes[name]
-                except KeyError:
-                    node = NodeRecord(name, node_type)
-                    node.metadata = collections.defaultdict(set)
-                    nodes[name] = node
-                attrs = self._line_keyvals(line, header, hgroups, htypes,
+
+                if name_index is None:
+                    #print "Could not find standard header name: %s in %s" \
+                    #                        % (node_type, header)
+                    continue
+
+                in_handle.seek(0, 0)
+                for line in reader:
+                    name = line[name_index]
+                    #to deal with same name used for different node types (e.g. Source Name and Sample Name using the same string)
+                    node_index = self._build_node_index(node_type,name)
+                    if name in header:
+                        continue
+                    try:
+                        node = nodes[name+node_type]
+                    except KeyError:
+                        #print "creating node ", node_index
+                        node = NodeRecord(name, node_type)
+                        node.metadata = collections.defaultdict(set)
+                        nodes[node_index] = node
+                    attrs = self._line_keyvals(line, header, hgroups, htypes,
                                            node.metadata)
-                nodes[name].metadata = attrs
+                nodes[node_index].metadata = attrs
+
         return dict([(k, self._finalize_metadata(v)) for k, v in nodes.items()])
 
     def _finalize_metadata(self, node):
         """Convert node metadata back into a standard dictionary and list.
         """
         final = {}
-        for key, val in node.metadata.iteritems():
+        for key, val in iter(node.metadata.items()):
             #val = list(val)
             #if isinstance(val[0], tuple):
             #    val = [dict(v) for v in val]
@@ -250,7 +346,7 @@ class StudyAssayParser:
         """
         for index, htype in ((i, t) for i, t in enumerate(htypes) if t == want_type):
             col = hgroups[index][0]
-            key = self._clean_header(header[col])
+            key = header[col]#self._clean_header(header[col])
             if collapse_quals_fn:
                 val = collapse_quals_fn(line, header, hgroups[index])
             else:
@@ -290,7 +386,7 @@ class StudyAssayParser:
         out = []
         for h in [header[g[0]] for g in hgroups]:
             this_ctype = None
-            for ctype, names in self._col_types.iteritems():
+            for ctype, names in self._col_types.items():
                 if h.startswith(names):
                     this_ctype = ctype
                     break
@@ -311,6 +407,29 @@ class StudyAssayParser:
     def _swap_synonyms(self, header):
         return [self._synonyms.get(h, h) for h in header]
 
+    #to ensure uniqueness of node indexes
+    def _build_node_index(self, type, name):
+        if type=="Source Name":
+            return "source-"+name
+        else:
+            if type == "Sample Name":
+                return "sample-"+name
+            else:
+                if type == "Extract Name":
+                    return "extract-"+name
+                else:
+                    if type == "Raw Data File":
+                       return "rawdatafile-"+name
+                    else:
+                        if type=="Derived Data File":
+                            return "deriveddatafile-"+name
+                        else:
+                            if type=="Acquisiton Parameter Data File":
+                                return "acquisitionparameterfile-"+name
+                            else:
+                                "ERROR - Type not being considered! ", type
+
+
 _record_str = \
 """* ISATab Record
  metadata: {md}
@@ -324,8 +443,11 @@ _study_str = \
    design_descriptors: {design_descriptors}
    publications : {publications}
    factors: {factors}
+   protocols: {protocols}
    nodes:
-{nodes}
+    {nodes}
+   process_nodes:
+    {process_nodes}
    assays:
 {assays}
 """
@@ -334,12 +456,21 @@ _assay_str = \
 """    * Assay
      metadata: {md}
      nodes:
-{nodes}
+        {nodes}
+     process_nodes:
+       {process_nodes}
 """
 
 _node_str = \
-"""       * Node {name} {type}
+"""       * Node -> {name} {type}
          metadata: {md}"""
+
+_process_node_str = \
+"""       * Process Node ->  {name} {type}
+         inputs: {inputs}
+         outputs: {outputs}
+         """
+
 
 class ISATabRecord:
     """Represent ISA-Tab metadata in structured format.
@@ -377,6 +508,7 @@ class ISATabStudyRecord:
         self.protocols = []
         self.contacts = []
         self.nodes = {}
+        self.process_nodes = {}
 
     def __str__(self):
         return _study_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 5),
@@ -385,7 +517,9 @@ class ISATabStudyRecord:
                                  factors="\n".join(str(x) for x in self.factors),
                                  assays="\n".join(str(x) for x in self.assays),
                                  protocols="\n".join(str(x) for x in self.protocols),
-                                 nodes="\n".join(str(x) for x in self.nodes.values()))
+                                 nodes="\n".join(str(x) for x in self.nodes.values()),
+                                 process_nodes="\n".join(str(x) for x in self.process_nodes.values())
+        )
 
 class ISATabAssayRecord:
     """Represent an assay within an ISA-Tab record.
@@ -394,13 +528,16 @@ class ISATabAssayRecord:
         if metadata is None: metadata = {}
         self.metadata = metadata
         self.nodes = {}
+        self.process_nodes = {}
 
     def __str__(self):
         return _assay_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 7),
-                                 nodes="\n".join(str(x) for x in self.nodes.values()))
+                                 nodes="\n".join(str(x) for x in self.nodes.values()),
+                                 process_nodes="\n".join(str(x) for x in self.process_nodes.values())
+        )
 
 class NodeRecord:
-    """Represent a data node within an ISA-Tab Study/Assay file.
+    """Represent a data or material node within an ISA-Tab Study/Assay file.
     """
     def __init__(self, name="", ntype=""):
         self.ntype = ntype
@@ -409,5 +546,22 @@ class NodeRecord:
 
     def __str__(self):
         return _node_str.format(md=pprint.pformat(self.metadata).replace("\n", "\n" + " " * 9),
+                                name=self.name,
+                                type=self.ntype)
+
+
+class ProcessNodeRecord:
+    """Represent a process node within an ISA-Tab Study/Assay file (corresponds to Protocol REF).
+    """
+    def __init__(self, name="", ntype="", study_assay=""):
+        self.ntype = ntype
+        self.study_assay = study_assay
+        self.name = name
+        self.inputs = []
+        self.outputs = []
+
+    def __str__(self):
+        return _process_node_str.format(inputs=pprint.pformat(self.inputs).replace("\n", "\n" + " " * 9),
+                                outputs=pprint.pformat(self.outputs).replace("\n", "\n" + " " * 9),
                                 name=self.name,
                                 type=self.ntype)
