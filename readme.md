@@ -1,3 +1,7 @@
+### Latest news
+
+We are currently maintaining the ISA-Tab python parser in the [ISA-API](http://github.com/ISA-tools/isa-api) code base. Please, refer to that repository for the latest parser.
+
 #### Python Parser for ISA-Tab
 
 This is a python parser for extracting information from ISA-Tab
